@@ -1,6 +1,6 @@
 
 import tkinter as tk
-from tkinter import messagebox, ttk
+from tkinter import messagebox
 import random
 import time
 import requests
@@ -309,7 +309,9 @@ class SnakeAndLadderGame:
         """플레이어 말을 그립니다. (포켓몬 또는 기본 도형)"""
         self.canvas.delete("player")
         for i, pos in enumerate(self.player_positions):
-            x, y = self.get_coords(pos)
+            # 100을 넘은 플레이어는 100 위치에 그립니다
+            draw_pos = min(pos, BOARD_SIZE)
+            x, y = self.get_coords(draw_pos)
             offset = (i - (self.num_players - 1) / 2) * 12
 
             if self.player_images and len(self.player_images) == self.num_players:
@@ -355,9 +357,11 @@ class SnakeAndLadderGame:
         self.root.update_idletasks()
         time.sleep(0.5) # 이동 애니메이션을 위한 짧은 딜레이
 
-        # 뱀 또는 사다리 확인
+        # 뱀 또는 사다리 확인 (100 이하일 때만)
         landed_on = ""
-        if new_pos in self.ladders:
+        if new_pos >= BOARD_SIZE:
+            final_pos = new_pos  # 100 이상이면 승리
+        elif new_pos in self.ladders:
             final_pos = self.ladders[new_pos]
             landed_on = f"사다리 발견! {new_pos} -> {final_pos}"
         elif new_pos in self.snakes:
