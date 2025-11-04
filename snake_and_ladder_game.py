@@ -16,11 +16,11 @@ CELL_SIZE = 60  # 50에서 60으로 증가
 CANVAS_WIDTH = CANVAS_HEIGHT = GRID_DIM * CELL_SIZE
 PLAYER_COLORS = ['#FF6347', '#4682B4', '#32CD32', '#FFD700']
 
-# --- 게임 설정 변수 (초기 설정 화면에서 변경 가능) ---
-NUM_SNAKES = 10
-NUM_LADDERS = 10
-NUM_PLAYERS = 2  # 2, 3, 4 중 선택
-NUM_COMPUTER_PLAYERS = 1  # 컴퓨터 플레이어 수
+# --- 기본 게임 설정 (초기 설정 화면의 기본값) ---
+DEFAULT_NUM_SNAKES = 10
+DEFAULT_NUM_LADDERS = 10
+DEFAULT_NUM_PLAYERS = 2
+DEFAULT_NUM_COMPUTER_PLAYERS = 1
 
 class SetupDialog:
     """게임 시작 전 초기 설정을 위한 다이얼로그"""
@@ -120,13 +120,11 @@ class SnakeAndLadderGame:
 
         self.player_images = [] # 포켓몬 이미지를 저장할 리스트
         
-        # 게임 설정 변수
-        self.num_players = NUM_PLAYERS
-        self.num_computer_players = NUM_COMPUTER_PLAYERS
-        self.num_snakes = NUM_SNAKES
-        self.num_ladders = NUM_LADDERS
-        # 컴퓨터 플레이어는 마지막 인덱스부터 시작 (예: 4명 중 2명이 컴퓨터면 인덱스 2, 3)
-        self.computer_player_start_index = NUM_PLAYERS - NUM_COMPUTER_PLAYERS
+        # 게임 설정 변수 (초기값은 기본값 사용)
+        self.num_players = DEFAULT_NUM_PLAYERS
+        self.num_computer_players = DEFAULT_NUM_COMPUTER_PLAYERS
+        self.num_snakes = DEFAULT_NUM_SNAKES
+        self.num_ladders = DEFAULT_NUM_LADDERS
 
         self.canvas = tk.Canvas(root, width=CANVAS_WIDTH, height=CANVAS_HEIGHT, bg='white')
         self.canvas.pack(pady=10, padx=10)
@@ -157,13 +155,16 @@ class SnakeAndLadderGame:
             self.num_computer_players = setup.result['computer_players']
             self.num_snakes = setup.result['snakes']
             self.num_ladders = setup.result['ladders']
-            # 컴퓨터 플레이어는 마지막 인덱스부터 시작
-            self.computer_player_start_index = self.num_players - self.num_computer_players
             
             self.start_new_game()
         else:
             # 취소 시 기본값으로 게임 시작
             self.start_new_game()
+
+    @property
+    def computer_player_start_index(self):
+        """컴퓨터 플레이어의 시작 인덱스 계산"""
+        return self.num_players - self.num_computer_players
 
     def is_computer_player(self, player_index):
         """주어진 플레이어 인덱스가 컴퓨터 플레이어인지 확인"""
@@ -177,6 +178,10 @@ class SnakeAndLadderGame:
         else:
             return f"플레이어 {player_index + 1}"
 
+    def reset_roll_button(self):
+        """주사위 굴리기 버튼을 초기 상태로 재설정"""
+        self.roll_button.config(state=tk.NORMAL, text="주사위 굴리기", command=self.play_turn)
+
     def start_new_game(self):
         """새 게임을 시작하고 모든 변수를 초기화합니다."""
         self.snakes = {}
@@ -189,7 +194,7 @@ class SnakeAndLadderGame:
         self.setup_board_elements()
         self.draw_board()
         self.update_status()
-        self.roll_button.config(state=tk.NORMAL, text="주사위 굴리기", command=self.play_turn)
+        self.reset_roll_button()
 
     def setup_board_elements(self):
         """뱀과 사다리를 랜덤하게 생성합니다."""
