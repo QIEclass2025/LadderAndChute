@@ -21,7 +21,6 @@ NUM_SNAKES = 10
 NUM_LADDERS = 10
 NUM_PLAYERS = 2  # 2, 3, 4 중 선택
 NUM_COMPUTER_PLAYERS = 1  # 컴퓨터 플레이어 수
-COMPUTER_PLAYER_INDEX = NUM_PLAYERS - NUM_COMPUTER_PLAYERS
 
 class SetupDialog:
     """게임 시작 전 초기 설정을 위한 다이얼로그"""
@@ -126,7 +125,8 @@ class SnakeAndLadderGame:
         self.num_computer_players = NUM_COMPUTER_PLAYERS
         self.num_snakes = NUM_SNAKES
         self.num_ladders = NUM_LADDERS
-        self.computer_player_index = COMPUTER_PLAYER_INDEX
+        # 컴퓨터 플레이어는 마지막 인덱스부터 시작 (예: 4명 중 2명이 컴퓨터면 인덱스 2, 3)
+        self.computer_player_start_index = NUM_PLAYERS - NUM_COMPUTER_PLAYERS
 
         self.canvas = tk.Canvas(root, width=CANVAS_WIDTH, height=CANVAS_HEIGHT, bg='white')
         self.canvas.pack(pady=10, padx=10)
@@ -157,12 +157,25 @@ class SnakeAndLadderGame:
             self.num_computer_players = setup.result['computer_players']
             self.num_snakes = setup.result['snakes']
             self.num_ladders = setup.result['ladders']
-            self.computer_player_index = self.num_players - self.num_computer_players
+            # 컴퓨터 플레이어는 마지막 인덱스부터 시작
+            self.computer_player_start_index = self.num_players - self.num_computer_players
             
             self.start_new_game()
         else:
             # 취소 시 기본값으로 게임 시작
             self.start_new_game()
+
+    def is_computer_player(self, player_index):
+        """주어진 플레이어 인덱스가 컴퓨터 플레이어인지 확인"""
+        return player_index >= self.computer_player_start_index
+
+    def get_player_name(self, player_index):
+        """플레이어 인덱스에 대한 이름 반환"""
+        if self.is_computer_player(player_index):
+            computer_number = player_index - self.computer_player_start_index + 1
+            return f"컴퓨터 {computer_number}" if self.num_computer_players > 1 else "컴퓨터"
+        else:
+            return f"플레이어 {player_index + 1}"
 
     def start_new_game(self):
         """새 게임을 시작하고 모든 변수를 초기화합니다."""
@@ -322,12 +335,12 @@ class SnakeAndLadderGame:
 
     def play_turn(self):
         """'주사위 굴리기' 버튼 클릭 시 호출되는 함수."""
-        if self.game_over or self.current_player >= self.computer_player_index:
+        if self.game_over or self.is_computer_player(self.current_player):
             return
 
         self.roll_and_move()
 
-        if not self.game_over and self.current_player >= self.computer_player_index:
+        if not self.game_over and self.is_computer_player(self.current_player):
             self.roll_button.config(state=tk.DISABLED)
             self.root.after(1000, self.computer_turn) # 1초 후 컴퓨터 턴 실행
 
@@ -342,9 +355,7 @@ class SnakeAndLadderGame:
     def roll_and_move(self):
         """주사위를 굴리고 말을 이동시킵니다."""
         roll = random.randint(1, 6)
-        player_name = f"플레이어 {self.current_player + 1}"
-        if self.current_player >= self.computer_player_index:
-            player_name = f"컴퓨터 {self.current_player - self.computer_player_index + 1}"
+        player_name = self.get_player_name(self.current_player)
         
         self.dice_label.config(text=f"주사위: {roll}")
         
@@ -386,9 +397,7 @@ class SnakeAndLadderGame:
     def update_status(self):
         """현재 턴 상태를 업데이트합니다."""
         if not self.game_over:
-            player_name = f"플레이어 {self.current_player + 1}"
-            if self.current_player >= self.computer_player_index:
-                player_name = f"컴퓨터 {self.current_player - self.computer_player_index + 1}"
+            player_name = self.get_player_name(self.current_player)
             self.status_label.config(text=f"{player_name}의 턴입니다.")
 
 if __name__ == "__main__":
