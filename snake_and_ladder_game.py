@@ -175,9 +175,16 @@ class SnakeAndLadderGame:
 
     def build_game_ui(self):
         """게임 UI를 생성하여 메인 윈도우에 배치"""
+        # 캔버스 프레임 (리사이징을 위해 프레임에 담음)
+        self.canvas_frame = tk.Frame(self.root)
+        self.canvas_frame.pack(pady=10, padx=10, fill=tk.BOTH, expand=True)
+        
         # 캔버스
-        self.canvas = tk.Canvas(self.root, width=CANVAS_WIDTH, height=CANVAS_HEIGHT, bg='white')
-        self.canvas.pack(pady=10, padx=10)
+        self.canvas = tk.Canvas(self.canvas_frame, width=CANVAS_WIDTH, height=CANVAS_HEIGHT, bg='white')
+        self.canvas.pack(fill=tk.BOTH, expand=True)
+        
+        # 윈도우 리사이징 이벤트 바인딩
+        self.canvas.bind('<Configure>', self.on_canvas_resize)
 
         # 컨트롤 프레임
         self.control_frame = tk.Frame(self.root)
@@ -192,9 +199,15 @@ class SnakeAndLadderGame:
         self.status_label = tk.Label(self.root, text="", font=('Helvetica', 14), fg='blue')
         self.status_label.pack(pady=10)
 
+    def on_canvas_resize(self, event):
+        """캔버스 리사이징 이벤트 핸들러 - 보드를 다시 그립니다"""
+        if hasattr(self, 'game_over') and not self.game_over and hasattr(self, 'snakes'):
+            # 게임이 진행 중일 때만 보드를 다시 그립니다
+            self.draw_board()
+
     def destroy_game_ui(self):
         """기존 게임 UI 위젯 제거"""
-        widgets = [self.canvas, self.control_frame, self.status_label]
+        widgets = [self.canvas_frame, self.control_frame, self.status_label]
         for w in widgets:
             try:
                 if w is not None:
@@ -288,8 +301,19 @@ class SnakeAndLadderGame:
                 occupied_squares.add(end)
             attempts += 1
 
+    def get_current_cell_size(self):
+        """현재 캔버스 크기에 맞는 셀 크기를 계산합니다"""
+        canvas_width = self.canvas.winfo_width()
+        canvas_height = self.canvas.winfo_height()
+        # 가로와 세로 중 작은 값을 기준으로 셀 크기 결정
+        size = min(canvas_width, canvas_height)
+        return max(size // GRID_DIM, 20)  # 최소 셀 크기는 20px
+
     def get_coords(self, square):
         """칸 번호를 Canvas 좌표로 변환합니다."""
+        cell_size = self.get_current_cell_size()
+        canvas_height = self.canvas.winfo_height()
+        
         square -= 1
         row = square // GRID_DIM
         col = square % GRID_DIM
@@ -297,17 +321,22 @@ class SnakeAndLadderGame:
         if row % 2 != 0:  # 홀수 줄 (1, 3, 5...)은 오른쪽에서 왼쪽으로
             col = GRID_DIM - 1 - col
             
-        x = col * CELL_SIZE
-        y = CANVAS_HEIGHT - (row + 1) * CELL_SIZE
-        return x + CELL_SIZE / 2, y + CELL_SIZE / 2
+        x = col * cell_size
+        y = canvas_height - (row + 1) * cell_size
+        return x + cell_size / 2, y + cell_size / 2
 
     def draw_board(self):
         """보드, 칸 번호, 뱀과 사다리를 그립니다."""
         self.canvas.delete("all")
+        cell_size = self.get_current_cell_size()
+        
+        # 폰트 크기를 셀 크기에 비례하게 조정
+        font_size = max(8, int(cell_size / 6))
+        
         for i in range(GRID_DIM):
             for j in range(GRID_DIM):
-                x1, y1 = j * CELL_SIZE, i * CELL_SIZE
-                x2, y2 = x1 + CELL_SIZE, y1 + CELL_SIZE
+                x1, y1 = j * cell_size, i * cell_size
+                x2, y2 = x1 + cell_size, y1 + cell_size
                 fill_color = "#F0E68C" if (i + j) % 2 == 0 else "#FFFACD"
                 self.canvas.create_rectangle(x1, y1, x2, y2, fill=fill_color, outline="black")
                 
@@ -317,27 +346,33 @@ class SnakeAndLadderGame:
                 else:
                     square_num += GRID_DIM - j
                 
-                self.canvas.create_text(x1 + CELL_SIZE/2, y1 + CELL_SIZE/2, text=str(square_num), font=('Helvetica', 10))
+                self.canvas.create_text(x1 + cell_size/2, y1 + cell_size/2, text=str(square_num), font=('Helvetica', font_size))
 
+        # 화살표 크기를 셀 크기에 비례하게 조정
+        line_width = max(2, int(cell_size / 10))
+        arrow_size = max(8, int(cell_size / 3))
+        arrowshape = (arrow_size, arrow_size + 4, arrow_size // 2)
+        
         # 사다리 그리기 (파란색, 더 굵고 화살표 크게)
         for start, end in self.ladders.items():
             x1, y1 = self.get_coords(start)
             x2, y2 = self.get_coords(end)
-            self.canvas.create_line(x1, y1, x2, y2, fill='#0066CC', width=6, arrow=tk.LAST, 
-                                  arrowshape=(16, 20, 6), smooth=True)
+            self.canvas.create_line(x1, y1, x2, y2, fill='#0066CC', width=line_width, arrow=tk.LAST, 
+                                  arrowshape=arrowshape, smooth=True)
 
         # 뱀 그리기 (빨간색, 더 굵고 화살표 크게)
         for start, end in self.snakes.items():
             x1, y1 = self.get_coords(start)
             x2, y2 = self.get_coords(end)
-            self.canvas.create_line(x1, y1, x2, y2, fill='#CC0000', width=6, arrow=tk.LAST, 
-                                  arrowshape=(16, 20, 6), smooth=True)
+            self.canvas.create_line(x1, y1, x2, y2, fill='#CC0000', width=line_width, arrow=tk.LAST, 
+                                  arrowshape=arrowshape, smooth=True)
             
         self.draw_players()
 
     def load_player_sprites(self):
         """PokeAPI에서 플레이어 수만큼 랜덤 포켓몬 이미지를 불러옵니다."""
-        self.player_images = []
+        self.player_image_data = []  # 원본 PIL 이미지 저장
+        self.player_images = []  # 렌더링용 PhotoImage 저장
         self.status_label.config(text="포켓몬을 불러오는 중...")
         self.root.update_idletasks()
         
@@ -356,32 +391,56 @@ class SnakeAndLadderGame:
                 if not sprite_url:
                     raise ValueError("Sprite URL not found")
 
-                # 이미지 다운로드 및 리사이즈
+                # 이미지 다운로드 (원본 저장)
                 img_data = requests.get(sprite_url, timeout=5).content
                 img = Image.open(io.BytesIO(img_data))
-                img = img.resize((35, 35), Image.Resampling.LANCZOS)
-                
-                self.player_images.append(ImageTk.PhotoImage(img))
+                self.player_image_data.append(img)
+            
+            # 현재 셀 크기에 맞게 리사이즈
+            self.resize_player_images()
             
             print(f"성공적으로 {self.num_players}마리의 포켓몬을 불러왔습니다.")
 
         except Exception as e:
             print(f"포켓몬 이미지 로딩 실패: {e}. 기본 말로 대체합니다.")
+            self.player_image_data = []
             self.player_images = [] # 실패 시 이미지 리스트 초기화
+
+    def resize_player_images(self):
+        """플레이어 이미지를 현재 셀 크기에 맞게 리사이즈합니다"""
+        if not self.player_image_data:
+            return
+        
+        cell_size = self.get_current_cell_size()
+        sprite_size = max(20, int(cell_size * 0.6))  # 셀 크기의 60%
+        
+        self.player_images = []
+        for img in self.player_image_data:
+            resized = img.resize((sprite_size, sprite_size), Image.Resampling.LANCZOS)
+            self.player_images.append(ImageTk.PhotoImage(resized))
 
     def draw_players(self):
         """플레이어 말을 그립니다. (포켓몬 또는 기본 도형)"""
         self.canvas.delete("player")
+        cell_size = self.get_current_cell_size()
+        offset_dist = max(6, int(cell_size / 8))
+        player_radius = max(5, int(cell_size / 10))
+        
+        # 이미지가 있으면 리사이즈
+        if self.player_image_data:
+            self.resize_player_images()
+        
         for i, pos in enumerate(self.player_positions):
             # 100을 넘은 플레이어는 100 위치에 그립니다
             draw_pos = min(pos, BOARD_SIZE)
             x, y = self.get_coords(draw_pos)
-            offset = (i - (self.num_players - 1) / 2) * 12
+            offset = (i - (self.num_players - 1) / 2) * offset_dist
 
             if self.player_images and len(self.player_images) == self.num_players:
                 self.canvas.create_image(x + offset, y, image=self.player_images[i], tags="player")
             else:
-                self.canvas.create_oval(x - 10 + offset, y - 10, x + 10 + offset, y + 10, 
+                self.canvas.create_oval(x - player_radius + offset, y - player_radius, 
+                                        x + player_radius + offset, y + player_radius, 
                                         fill=PLAYER_COLORS[i], outline='black', tags="player")
 
     def play_turn(self):
