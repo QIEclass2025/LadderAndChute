@@ -101,26 +101,39 @@ class SetupPanel:
             self.frame = None
 
     def validate_players(self):
-        """플레이어 수 검증"""
+        """플레이어 수 검증 및 이름 입력 필드 활성화/비활성화"""
         total = self.total_players_var.get()
         computer = self.computer_players_var.get()
 
         if computer >= total:
             self.warning_label.config(text="컴퓨터 플레이어 수는 총 플레이어 수보다 작아야 합니다.")
-            return False
+            valid = False
         else:
             self.warning_label.config(text="")
-            return True
+            valid = True
+        
+        # 사람 플레이어 수만큼만 이름 입력 필드 활성화
+        human_players = total - computer
+        for i in range(len(self.player_name_entries)):
+            if i < human_players:
+                self.player_name_entries[i].config(state=tk.NORMAL)
+            else:
+                self.player_name_entries[i].config(state=tk.DISABLED)
+        
+        return valid
 
     def ok_clicked(self):
         """시작 버튼 클릭 (유효하면 콜백으로 결과 전달)"""
         if not self.validate_players():
             return
 
-        # 플레이어 이름 수집 (총 플레이어 수만큼만)
+        # 플레이어 이름 수집 (사람 플레이어 수만큼만)
         total_players = self.total_players_var.get()
+        computer_players = self.computer_players_var.get()
+        human_players = total_players - computer_players
+        
         player_names = []
-        for i in range(total_players):
+        for i in range(human_players):
             name = self.player_name_entries[i].get().strip()
             if not name:
                 name = f"플레이어 {i+1}"
