@@ -55,6 +55,20 @@ class SetupPanel:
                                                    width=10, command=self.validate_players)
         self.computer_players_spinbox.grid(row=1, column=1, pady=5, padx=(10, 0))
 
+        # 플레이어 이름 설정
+        names_frame = tk.LabelFrame(self.frame, text="플레이어 이름 설정", padx=10, pady=10)
+        names_frame.pack(padx=10, pady=10, fill="x")
+        
+        self.player_name_entries = []
+        for i in range(4):  # 최대 4명
+            tk.Label(names_frame, text=f"플레이어 {i+1}:").grid(row=i, column=0, sticky="w", pady=3)
+            entry = tk.Entry(names_frame, width=20)
+            entry.insert(0, f"플레이어 {i+1}")
+            entry.grid(row=i, column=1, pady=3, padx=(10, 0), sticky="ew")
+            self.player_name_entries.append(entry)
+        
+        names_frame.columnconfigure(1, weight=1)
+
         # 뱀과 사다리 설정
         elements_frame = tk.LabelFrame(self.frame, text="뱀과 사다리 설정", padx=10, pady=10)
         elements_frame.pack(padx=10, pady=10, fill="x")
@@ -103,11 +117,21 @@ class SetupPanel:
         if not self.validate_players():
             return
 
+        # 플레이어 이름 수집 (총 플레이어 수만큼만)
+        total_players = self.total_players_var.get()
+        player_names = []
+        for i in range(total_players):
+            name = self.player_name_entries[i].get().strip()
+            if not name:
+                name = f"플레이어 {i+1}"
+            player_names.append(name)
+
         result = {
-            'total_players': self.total_players_var.get(),
+            'total_players': total_players,
             'computer_players': self.computer_players_var.get(),
             'ladders': self.ladders_var.get(),
-            'snakes': self.snakes_var.get()
+            'snakes': self.snakes_var.get(),
+            'player_names': player_names
         }
         # 패널은 콜백에서 제거
         if callable(self.on_submit):
@@ -131,6 +155,7 @@ class SnakeAndLadderGame:
         self.num_computer_players = DEFAULT_NUM_COMPUTER_PLAYERS
         self.num_snakes = DEFAULT_NUM_SNAKES
         self.num_ladders = DEFAULT_NUM_LADDERS
+        self.player_names = []  # 플레이어 이름 목록
 
         # 게임 UI 위젯 (초기에는 없음)
         self.canvas = None
@@ -147,6 +172,7 @@ class SnakeAndLadderGame:
         self.aspect_ratio_locked = False
         self.target_aspect_ratio = 1.0  # 1:1 (정사각형)
         self.resize_after_id = None
+        self.canvas_resize_after_id = None  # 캔버스 리사이즈 지연용
 
         # 초기 설정 화면 표시
         self.show_setup_dialog()
@@ -169,6 +195,7 @@ class SnakeAndLadderGame:
         self.num_computer_players = result['computer_players']
         self.num_snakes = result['snakes']
         self.num_ladders = result['ladders']
+        self.player_names = result.get('player_names', [])
 
         # 설정 패널 제거 후 게임 UI 생성 및 시작
         if self.setup_panel:
@@ -249,9 +276,21 @@ class SnakeAndLadderGame:
             self.root.geometry(f"{current_width}x{target_height}")
 
     def on_canvas_resize(self, event):
-        """캔버스 리사이징 이벤트 핸들러 - 보드를 다시 그립니다"""
-        if hasattr(self, 'game_over') and not self.game_over and hasattr(self, 'snakes'):
-            # 게임이 진행 중일 때만 보드를 다시 그립니다
+        """캔버스 리사이징 이벤트 핸들러 - 드래그 종료 후 보드를 다시 그립니다"""
+        if not hasattr(self, 'game_over') or self.game_over or not hasattr(self, 'snakes'):
+            return
+        
+        # 기존 예약된 리사이즈 취소
+        if self.canvas_resize_after_id:
+            self.root.after_cancel(self.canvas_resize_after_id)
+        
+        # 300ms 후에 보드 다시 그리기 (드래그가 멈춘 후)
+        self.canvas_resize_after_id = self.root.after(300, self.redraw_board_after_resize)
+    
+    def redraw_board_after_resize(self):
+        """리사이즈 완료 후 보드를 다시 그립니다"""
+        self.canvas_resize_after_id = None
+        if hasattr(self, 'snakes') and not self.game_over:
             self.draw_board()
 
     def destroy_game_ui(self):
@@ -284,6 +323,9 @@ class SnakeAndLadderGame:
             computer_number = player_index - self.computer_player_start_index + 1
             return f"컴퓨터 {computer_number}" if self.num_computer_players > 1 else "컴퓨터"
         else:
+            # 사용자 지정 이름이 있으면 사용, 없으면 기본 이름
+            if self.player_names and player_index < len(self.player_names):
+                return self.player_names[player_index]
             return f"플레이어 {player_index + 1}"
 
     def reset_roll_button(self):
