@@ -22,95 +22,98 @@ DEFAULT_NUM_LADDERS = 10
 DEFAULT_NUM_PLAYERS = 2
 DEFAULT_NUM_COMPUTER_PLAYERS = 1
 
-class SetupDialog:
-    """게임 시작 전 초기 설정을 위한 다이얼로그"""
-    def __init__(self, parent):
-        self.dialog = tk.Toplevel(parent)
-        self.dialog.title("게임 설정")
-        self.dialog.resizable(False, False)
-        self.dialog.transient(parent)
-        self.dialog.grab_set()
-        
-        self.result = None
-        
+class SetupPanel:
+    """메인 윈도우에 합쳐져서 표시되는 게임 설정 패널"""
+    def __init__(self, parent, on_submit, on_cancel):
+        self.parent = parent
+        self.on_submit = on_submit
+        self.on_cancel = on_cancel
+
+        self.frame = tk.Frame(parent, padx=20, pady=20)
+        self.frame.pack(fill="both", expand=True)
+
+        title = tk.Label(self.frame, text="게임 설정", font=('Helvetica', 16, 'bold'))
+        title.pack(pady=(0, 10))
+
         # 플레이어 수 설정
-        player_frame = tk.LabelFrame(self.dialog, text="플레이어 설정", padx=10, pady=10)
-        player_frame.pack(padx=20, pady=10, fill="both")
-        
+        player_frame = tk.LabelFrame(self.frame, text="플레이어 설정", padx=10, pady=10)
+        player_frame.pack(padx=10, pady=10, fill="x")
+
         tk.Label(player_frame, text="총 플레이어 수:").grid(row=0, column=0, sticky="w", pady=5)
-        self.total_players_var = tk.IntVar(value=2)
-        total_players_spinbox = tk.Spinbox(player_frame, from_=2, to=4, textvariable=self.total_players_var, 
-                                          width=10, command=self.validate_players)
-        total_players_spinbox.grid(row=0, column=1, pady=5)
-        
+        self.total_players_var = tk.IntVar(value=DEFAULT_NUM_PLAYERS)
+        total_players_spinbox = tk.Spinbox(player_frame, from_=2, to=4, textvariable=self.total_players_var,
+                                           width=10, command=self.validate_players)
+        total_players_spinbox.grid(row=0, column=1, pady=5, padx=(10, 0))
+
         tk.Label(player_frame, text="컴퓨터 플레이어 수:").grid(row=1, column=0, sticky="w", pady=5)
-        self.computer_players_var = tk.IntVar(value=1)
-        self.computer_players_spinbox = tk.Spinbox(player_frame, from_=0, to=3, 
-                                                   textvariable=self.computer_players_var, 
+        self.computer_players_var = tk.IntVar(value=DEFAULT_NUM_COMPUTER_PLAYERS)
+        self.computer_players_spinbox = tk.Spinbox(player_frame, from_=0, to=3,
+                                                   textvariable=self.computer_players_var,
                                                    width=10, command=self.validate_players)
-        self.computer_players_spinbox.grid(row=1, column=1, pady=5)
-        
+        self.computer_players_spinbox.grid(row=1, column=1, pady=5, padx=(10, 0))
+
         # 뱀과 사다리 설정
-        elements_frame = tk.LabelFrame(self.dialog, text="뱀과 사다리 설정", padx=10, pady=10)
-        elements_frame.pack(padx=20, pady=10, fill="both")
-        
+        elements_frame = tk.LabelFrame(self.frame, text="뱀과 사다리 설정", padx=10, pady=10)
+        elements_frame.pack(padx=10, pady=10, fill="x")
+
         tk.Label(elements_frame, text="사다리 개수:").grid(row=0, column=0, sticky="w", pady=5)
-        self.ladders_var = tk.IntVar(value=10)
-        tk.Spinbox(elements_frame, from_=5, to=20, textvariable=self.ladders_var, width=10).grid(row=0, column=1, pady=5)
-        
+        self.ladders_var = tk.IntVar(value=DEFAULT_NUM_LADDERS)
+        tk.Spinbox(elements_frame, from_=5, to=20, textvariable=self.ladders_var, width=10).grid(row=0, column=1, pady=5, padx=(10, 0))
+
         tk.Label(elements_frame, text="뱀 개수:").grid(row=1, column=0, sticky="w", pady=5)
-        self.snakes_var = tk.IntVar(value=10)
-        tk.Spinbox(elements_frame, from_=5, to=20, textvariable=self.snakes_var, width=10).grid(row=1, column=1, pady=5)
-        
+        self.snakes_var = tk.IntVar(value=DEFAULT_NUM_SNAKES)
+        tk.Spinbox(elements_frame, from_=5, to=20, textvariable=self.snakes_var, width=10).grid(row=1, column=1, pady=5, padx=(10, 0))
+
         # 경고 레이블
-        self.warning_label = tk.Label(self.dialog, text="", fg="red")
-        self.warning_label.pack(pady=5)
-        
+        self.warning_label = tk.Label(self.frame, text="", fg="red")
+        self.warning_label.pack(pady=(0, 5))
+
         # 버튼
-        button_frame = tk.Frame(self.dialog)
+        button_frame = tk.Frame(self.frame)
         button_frame.pack(pady=10)
-        
-        tk.Button(button_frame, text="시작", command=self.ok_clicked, width=10).pack(side=tk.LEFT, padx=5)
-        tk.Button(button_frame, text="취소", command=self.cancel_clicked, width=10).pack(side=tk.LEFT, padx=5)
-        
+
+        tk.Button(button_frame, text="시작", command=self.ok_clicked, width=12).pack(side=tk.LEFT, padx=5)
+        tk.Button(button_frame, text="취소", command=self.cancel_clicked, width=12).pack(side=tk.LEFT, padx=5)
+
         # 초기 검증
         self.validate_players()
-        
-        # 다이얼로그 중앙 정렬
-        self.dialog.update_idletasks()
-        x = (self.dialog.winfo_screenwidth() // 2) - (self.dialog.winfo_width() // 2)
-        y = (self.dialog.winfo_screenheight() // 2) - (self.dialog.winfo_height() // 2)
-        self.dialog.geometry(f"+{x}+{y}")
-    
+
+    def destroy(self):
+        if self.frame is not None:
+            self.frame.destroy()
+            self.frame = None
+
     def validate_players(self):
         """플레이어 수 검증"""
         total = self.total_players_var.get()
         computer = self.computer_players_var.get()
-        
+
         if computer >= total:
             self.warning_label.config(text="컴퓨터 플레이어 수는 총 플레이어 수보다 작아야 합니다.")
             return False
         else:
             self.warning_label.config(text="")
             return True
-    
+
     def ok_clicked(self):
-        """시작 버튼 클릭"""
+        """시작 버튼 클릭 (유효하면 콜백으로 결과 전달)"""
         if not self.validate_players():
             return
-        
-        self.result = {
+
+        result = {
             'total_players': self.total_players_var.get(),
             'computer_players': self.computer_players_var.get(),
             'ladders': self.ladders_var.get(),
             'snakes': self.snakes_var.get()
         }
-        self.dialog.destroy()
-    
+        # 패널은 콜백에서 제거
+        if callable(self.on_submit):
+            self.on_submit(result)
+
     def cancel_clicked(self):
-        """취소 버튼 클릭"""
-        self.result = None
-        self.dialog.destroy()
+        """취소 버튼 클릭 (앱 종료 콜백 호출)"""
+        if callable(self.on_cancel):
+            self.on_cancel()
 
 class SnakeAndLadderGame:
     def __init__(self, root):
@@ -126,40 +129,83 @@ class SnakeAndLadderGame:
         self.num_snakes = DEFAULT_NUM_SNAKES
         self.num_ladders = DEFAULT_NUM_LADDERS
 
-        self.canvas = tk.Canvas(root, width=CANVAS_WIDTH, height=CANVAS_HEIGHT, bg='white')
-        self.canvas.pack(pady=10, padx=10)
+        # 게임 UI 위젯 (초기에는 없음)
+        self.canvas = None
+        self.control_frame = None
+        self.dice_label = None
+        self.roll_button = None
+        self.status_label = None
 
-        control_frame = tk.Frame(root)
-        control_frame.pack(pady=5)
-
-        self.dice_label = tk.Label(control_frame, text="주사위: -", font=('Helvetica', 14))
-        self.dice_label.pack(side=tk.LEFT, padx=10)
-
-        self.roll_button = tk.Button(control_frame, text="주사위 굴리기", font=('Helvetica', 14), command=self.play_turn)
-        self.roll_button.pack(side=tk.LEFT, padx=10)
-
-        self.status_label = tk.Label(root, text="", font=('Helvetica', 14), fg='blue')
-        self.status_label.pack(pady=10)
+        # 설정 패널 핸들
+        self.setup_panel = None
 
         # 초기 설정 화면 표시
         self.show_setup_dialog()
 
     def show_setup_dialog(self):
-        """초기 설정 다이얼로그 표시"""
-        setup = SetupDialog(self.root)
-        self.root.wait_window(setup.dialog)
-        
-        if setup.result:
-            # 설정 적용
-            self.num_players = setup.result['total_players']
-            self.num_computer_players = setup.result['computer_players']
-            self.num_snakes = setup.result['snakes']
-            self.num_ladders = setup.result['ladders']
-            
-            self.start_new_game()
-        else:
-            # 취소 시 기본값으로 게임 시작
-            self.start_new_game()
+        """초기 설정 패널을 메인 윈도우에 표시"""
+        # 기존 게임 UI가 있으면 제거
+        self.destroy_game_ui()
+        # 기존 설정 패널이 있으면 제거
+        if self.setup_panel:
+            self.setup_panel.destroy()
+            self.setup_panel = None
+
+        # 새 설정 패널 표시
+        self.setup_panel = SetupPanel(self.root, on_submit=self.on_setup_submit, on_cancel=self.on_setup_cancel)
+
+    def on_setup_submit(self, result):
+        """설정 패널에서 '시작' 클릭 시 처리"""
+        self.num_players = result['total_players']
+        self.num_computer_players = result['computer_players']
+        self.num_snakes = result['snakes']
+        self.num_ladders = result['ladders']
+
+        # 설정 패널 제거 후 게임 UI 생성 및 시작
+        if self.setup_panel:
+            self.setup_panel.destroy()
+            self.setup_panel = None
+
+        self.build_game_ui()
+        self.start_new_game()
+
+    def on_setup_cancel(self):
+        """설정 패널에서 '취소' 클릭 시 앱 종료"""
+        self.root.destroy()
+
+    def build_game_ui(self):
+        """게임 UI를 생성하여 메인 윈도우에 배치"""
+        # 캔버스
+        self.canvas = tk.Canvas(self.root, width=CANVAS_WIDTH, height=CANVAS_HEIGHT, bg='white')
+        self.canvas.pack(pady=10, padx=10)
+
+        # 컨트롤 프레임
+        self.control_frame = tk.Frame(self.root)
+        self.control_frame.pack(pady=5)
+
+        self.dice_label = tk.Label(self.control_frame, text="주사위: -", font=('Helvetica', 14))
+        self.dice_label.pack(side=tk.LEFT, padx=10)
+
+        self.roll_button = tk.Button(self.control_frame, text="주사위 굴리기", font=('Helvetica', 14), command=self.play_turn)
+        self.roll_button.pack(side=tk.LEFT, padx=10)
+
+        self.status_label = tk.Label(self.root, text="", font=('Helvetica', 14), fg='blue')
+        self.status_label.pack(pady=10)
+
+    def destroy_game_ui(self):
+        """기존 게임 UI 위젯 제거"""
+        widgets = [self.canvas, self.control_frame, self.status_label]
+        for w in widgets:
+            try:
+                if w is not None:
+                    w.destroy()
+            except Exception:
+                pass
+        self.canvas = None
+        self.control_frame = None
+        self.dice_label = None
+        self.roll_button = None
+        self.status_label = None
 
     @property
     def computer_player_start_index(self):
@@ -353,9 +399,15 @@ class SnakeAndLadderGame:
         """컴퓨터의 턴을 자동으로 진행합니다."""
         if self.game_over:
             return
-        
+
         self.roll_and_move()
-        self.roll_button.config(state=tk.NORMAL)
+
+        # 다음 턴도 컴퓨터라면 자동으로 이어서 진행
+        if not self.game_over and self.is_computer_player(self.current_player):
+            self.root.after(1000, self.computer_turn)
+        else:
+            # 사람 차례가 되면 버튼을 다시 활성화
+            self.roll_button.config(state=tk.NORMAL)
 
     def roll_and_move(self):
         """주사위를 굴리고 말을 이동시킵니다."""
