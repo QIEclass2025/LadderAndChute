@@ -28,6 +28,9 @@ class SetupPanel:
         self.parent = parent
         self.on_submit = on_submit
         self.on_cancel = on_cancel
+        
+        # 설정 다이얼로그 크기를 게임 화면과 동일하게 설정
+        parent.geometry(f"{CANVAS_WIDTH + 40}x{int((CANVAS_WIDTH + 40) * 1.2)}")
 
         self.frame = tk.Frame(parent, padx=20, pady=20)
         self.frame.pack(fill="both", expand=True)
@@ -355,10 +358,21 @@ class SnakeAndLadderGame:
         size = min(canvas_width, canvas_height)
         return max(size // GRID_DIM, 20)  # 최소 셀 크기는 20px
 
+    def get_board_offset(self):
+        """보드가 캔버스 중앙에 오도록 오프셋을 계산합니다"""
+        cell_size = self.get_current_cell_size()
+        board_size = GRID_DIM * cell_size
+        canvas_width = self.canvas.winfo_width()
+        canvas_height = self.canvas.winfo_height()
+        
+        offset_x = max(0, (canvas_width - board_size) // 2)
+        offset_y = max(0, (canvas_height - board_size) // 2)
+        return offset_x, offset_y
+
     def get_coords(self, square):
         """칸 번호를 Canvas 좌표로 변환합니다."""
         cell_size = self.get_current_cell_size()
-        canvas_height = self.canvas.winfo_height()
+        offset_x, offset_y = self.get_board_offset()
         
         square -= 1
         row = square // GRID_DIM
@@ -367,21 +381,24 @@ class SnakeAndLadderGame:
         if row % 2 != 0:  # 홀수 줄 (1, 3, 5...)은 오른쪽에서 왼쪽으로
             col = GRID_DIM - 1 - col
             
-        x = col * cell_size
-        y = canvas_height - (row + 1) * cell_size
+        # 보드는 아래에서 위로 (row 0이 맨 아래)
+        x = offset_x + col * cell_size
+        y = offset_y + (GRID_DIM - row - 1) * cell_size
         return x + cell_size / 2, y + cell_size / 2
 
     def draw_board(self):
         """보드, 칸 번호, 뱀과 사다리를 그립니다."""
         self.canvas.delete("all")
         cell_size = self.get_current_cell_size()
+        offset_x, offset_y = self.get_board_offset()
         
         # 폰트 크기를 셀 크기에 비례하게 조정
         font_size = max(8, int(cell_size / 6))
         
         for i in range(GRID_DIM):
             for j in range(GRID_DIM):
-                x1, y1 = j * cell_size, i * cell_size
+                x1 = offset_x + j * cell_size
+                y1 = offset_y + i * cell_size
                 x2, y2 = x1 + cell_size, y1 + cell_size
                 fill_color = "#F0E68C" if (i + j) % 2 == 0 else "#FFFACD"
                 self.canvas.create_rectangle(x1, y1, x2, y2, fill=fill_color, outline="black")
