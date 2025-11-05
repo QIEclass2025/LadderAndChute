@@ -131,6 +131,7 @@ class SnakeAndLadderGame:
 
         # 게임 UI 위젯 (초기에는 없음)
         self.canvas = None
+        self.canvas_frame = None
         self.control_frame = None
         self.dice_label = None
         self.roll_button = None
@@ -138,6 +139,11 @@ class SnakeAndLadderGame:
 
         # 설정 패널 핸들
         self.setup_panel = None
+        
+        # 종횡비 고정을 위한 변수
+        self.aspect_ratio_locked = False
+        self.target_aspect_ratio = 1.0  # 1:1 (정사각형)
+        self.resize_after_id = None
 
         # 초기 설정 화면 표시
         self.show_setup_dialog()
@@ -185,6 +191,10 @@ class SnakeAndLadderGame:
         
         # 윈도우 리사이징 이벤트 바인딩
         self.canvas.bind('<Configure>', self.on_canvas_resize)
+        
+        # 윈도우 리사이징 시 종횡비 유지
+        self.aspect_ratio_locked = True
+        self.root.bind('<Configure>', self.on_window_resize)
 
         # 컨트롤 프레임
         self.control_frame = tk.Frame(self.root)
@@ -198,6 +208,42 @@ class SnakeAndLadderGame:
 
         self.status_label = tk.Label(self.root, text="", font=('Helvetica', 14), fg='blue')
         self.status_label.pack(pady=10)
+
+    def on_window_resize(self, event):
+        """윈도우 리사이징 시 종횡비를 유지합니다"""
+        if not self.aspect_ratio_locked or event.widget != self.root:
+            return
+        
+        # 리사이징 중복 호출 방지
+        if self.resize_after_id:
+            self.root.after_cancel(self.resize_after_id)
+        
+        # 짧은 지연 후 종횡비 조정 (연속적인 리사이징 이벤트 처리)
+        self.resize_after_id = self.root.after(10, self.adjust_aspect_ratio)
+
+    def adjust_aspect_ratio(self):
+        """윈도우의 종횡비를 조정합니다"""
+        self.resize_after_id = None
+        
+        # 현재 윈도우 크기 가져오기
+        current_width = self.root.winfo_width()
+        current_height = self.root.winfo_height()
+        
+        # 목표 종횡비에 맞춰 크기 조정
+        # 캔버스는 정사각형이어야 하지만, 컨트롤 UI를 위한 추가 높이 필요
+        # 전체 윈도우의 종횡비를 대략 1:1.15 정도로 유지 (컨트롤 패널 고려)
+        
+        # 너비를 기준으로 적절한 높이 계산 (1:1.2 비율)
+        target_height = int(current_width * 1.2)
+        
+        # 높이가 너무 작으면 최소값 적용
+        if target_height < 400:
+            target_height = 400
+            current_width = int(target_height / 1.2)
+        
+        # 크기가 현재와 많이 다르면 조정
+        if abs(current_height - target_height) > 5:
+            self.root.geometry(f"{current_width}x{target_height}")
 
     def on_canvas_resize(self, event):
         """캔버스 리사이징 이벤트 핸들러 - 보드를 다시 그립니다"""
